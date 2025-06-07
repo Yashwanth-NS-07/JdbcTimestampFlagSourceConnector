@@ -12,15 +12,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class JdbcFlagSourceConnectorTest {
+public class JdbcTimestampFlagSourceConnectorTest {
 
-    JdbcFlagSourceConnector connector;
+    JdbcTimestampFlagSourceConnector connector;
     private EmbeddedDerby db;
     private Map<String, String> props;
 
     @Before
     public void setup() {
-        connector = new JdbcFlagSourceConnector();
+        connector = new JdbcTimestampFlagSourceConnector();
         db = new EmbeddedDerby();
         props = new HashMap<>();
         props.put(JdbcSourceConnectorConfig.CONNECTION_URL_CONFIG, db.getUrl());

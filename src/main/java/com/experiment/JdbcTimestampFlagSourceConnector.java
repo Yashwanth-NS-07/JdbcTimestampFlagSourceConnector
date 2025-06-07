@@ -21,9 +21,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public class JdbcFlagSourceConnector extends SourceConnector {
+public class JdbcTimestampFlagSourceConnector extends SourceConnector {
 
-    private static final Logger log = LoggerFactory.getLogger(JdbcFlagSourceConnector.class);
+    private static final Logger log = LoggerFactory.getLogger(JdbcTimestampFlagSourceConnector.class);
 
     private Map<String, String> configProperties;
     // visible for testing purpose
