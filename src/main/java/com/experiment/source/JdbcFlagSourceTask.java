@@ -325,6 +325,9 @@ public class JdbcFlagSourceTask extends SourceTask {
                     inPollMethod.set(false);
                     throw new ConnectException("Failed to query to table after retries", sqle);
                 }
+                // sleeping for 2 seconds before retry
+                time.sleep(2000);
+                continue;
                 //inPollMethod.set(false);
                 // not closing resource here because tracking the query retry attempts
                 //return null;
