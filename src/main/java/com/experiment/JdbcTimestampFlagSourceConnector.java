@@ -93,7 +93,7 @@ public class JdbcTimestampFlagSourceConnector extends SourceConnector {
 
     @Override
     public void stop() {
-        log.info("Stopping the jdbc flag connector");
+        log.info("Stopping the jdbc timestamp flag connector");
         cachedConnectionProvider.close();
         try {
             if(dialect != null) dialect.close();
