@@ -15,6 +15,27 @@
 
   <name>JdbcTimestampFlagSourceConnector</name>
 
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Yashwanth Gowda N S</name>
+      <url>https://github.com/Yashwanth-NS-07</url>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:git://github.com/Yashwanth-NS-07/JdbcTimestampFlagSourceConnector.git</connection>
+    <developerConnection>scm:git:ssh://github.com:Yashwanth-NS-07/JdbcTimestampFlagSourceConnector.git</developerConnection>
+    <url>https://github.com/Yashwanth-NS-07/JdbcTimestampFlagSourceConnector/tree/main</url>
+  </scm>
+
   <properties>
     <derby.version>10.14.2.0</derby.version>
     <commons-io.version>2.4</commons-io.version>
@@ -44,7 +65,7 @@
     <maven-surefire-plugin.version>3.0.0-M7</maven-surefire-plugin.version>
     <maven-failsafe-plugin.version>3.0.0-M7</maven-failsafe-plugin.version>
     <dependency.check.skip>true</dependency.check.skip>
-    <kafka.connect.jdbc.version>10.7.4</kafka.connect.jdbc.version>
+    <kafka.connect.jdbc.version>10.8.2</kafka.connect.jdbc.version>
   </properties>
 
   <dependencies>

@@ -37,7 +37,7 @@ public class JdbcFlagSourceTask extends SourceTask {
     private int queryRetryAttempts ;
     private int queryRetryAttempted ;
     private long numberOfLastPolledRecords;
-    private static final int CONSECUTIVE_EMPTY_RESULTS_BEFORE_RETURN = 3;
+    private static final int CONSECUTIVE_EMPTY_RESULTS_BEFORE_RETURN = 1;
     //visible for testing purpose
     JdbcFlagQuerier querier;
     JdbcFlagDbWriter writer;

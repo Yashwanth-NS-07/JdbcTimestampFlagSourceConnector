@@ -79,8 +79,8 @@ public class JdbcFlagBufferedRecords {
                     schemaPair,
                     fieldsMetadata,
                     tableDefinition, //for backward compatibility
-                    JdbcSinkConfig.InsertMode.UPDATE
-                    //true // for backward compatibility
+                    JdbcSinkConfig.InsertMode.UPDATE,
+                    true // for backward compatibility
             );
         }
         records.add(record);
