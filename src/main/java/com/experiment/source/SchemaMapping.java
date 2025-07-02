@@ -31,26 +31,8 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.*;
 
-/**
- * A mapping from a result set into a {@link Schema}. This mapping contains an array of {@link
- * FieldSetter} functions (one for each column in the result set), and the caller should iterate
- * over these and call the function with the result set.
- *
- * <p>This mapping contains the {@link ColumnConverter} functions that should be called for each row
- * in the result set. and these are exposed to users of this class via the {@link FieldSetter}
- * function.
- */
 public final class SchemaMapping {
 
-  /**
-   * Convert the result set into a {@link Schema}.
-   *
-   * @param schemaName the name of the schema; may be null
-   * @param metadata   the result set metadata; never null
-   * @param dialect    the dialect for the source database; never null
-   * @return the schema mapping; never null
-   * @throws SQLException if there is a problem accessing the result set metadata
-   */
   public static SchemaMapping create(
       String schemaName,
       ResultSetMetaData metadata,
@@ -100,13 +82,6 @@ public final class SchemaMapping {
     return schema;
   }
 
-  /**
-   * Get the {@link FieldSetter} functions, which contain one for each result set column whose
-   * values are to be mapped/converted and then set on the corresponding {@link Field} in supplied
-   * {@link Struct} objects.
-   *
-   * @return the array of {@link FieldSetter} instances; never null and never empty
-   */
   List<FieldSetter> fieldSetters() {
     return fieldSetters;
   }
@@ -129,25 +104,10 @@ public final class SchemaMapping {
       this.field = field;
     }
 
-    /**
-     * Get the {@link Field} that this setter function sets.
-     *
-     * @return the field; never null
-     */
     public Field field() {
       return field;
     }
 
-    /**
-     * Call the {@link ColumnConverter converter} on the supplied {@link ResultSet} and set the
-     * corresponding {@link #field() field} on the supplied {@link Struct}.
-     *
-     * @param struct    the struct whose field is to be set with the converted value from the result
-     *                  set; may not be null
-     * @param resultSet the result set positioned at the row to be processed; may not be null
-     * @throws SQLException if there is an error accessing the result set
-     * @throws IOException  if there is an error accessing a streaming value from the result set
-     */
     void setField(
         Struct struct,
         ResultSet resultSet

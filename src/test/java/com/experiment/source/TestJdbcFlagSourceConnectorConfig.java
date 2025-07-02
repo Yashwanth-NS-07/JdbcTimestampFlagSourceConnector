@@ -22,7 +22,7 @@ import java.util.Map;
 
 public class TestJdbcFlagSourceConnectorConfig {
     @Test
-    public void testBaseCofnig() {
+    public void testBaseConfig() {
         Map<String, String> props = new HashMap<>();
         props.put("flag.column.name", "a");
         props.put("timestamp.column.name", "t");

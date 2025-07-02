@@ -23,6 +23,5 @@ public class TestVersion {
     @Test
     public void testVersion() {
         assertNotNull(Version.getVersion());
-        System.out.println(Version.getVersion());
     }
 }

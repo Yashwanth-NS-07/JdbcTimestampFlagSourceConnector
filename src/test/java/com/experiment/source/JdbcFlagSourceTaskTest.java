@@ -30,6 +30,8 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static org.junit.Assert.assertEquals;
+
 public class JdbcFlagSourceTaskTest {
     JdbcFlagSourceTask task;
     private EmbeddedDerby db;
@@ -95,8 +97,6 @@ public class JdbcFlagSourceTaskTest {
         //props.put("db.timezone", "Asia/Kolkata");
         task.start(props);
         task.querier.startQuery(task.cachedConnectionProvider.getConnection());
-        ResultSet resultSet = task.querier.resultSet;
-        //log.info(resultSet.getMetaData().getTableName(1));
         CompletableFuture<List<SourceRecord>> future = CompletableFuture.supplyAsync(() -> {
             try {
                 return task.poll();
@@ -112,7 +112,11 @@ public class JdbcFlagSourceTaskTest {
             }
         db.execute("update \"table\" set \"lastdate\" = TIMESTAMP('2025-06-03 00:00:00') where \"id\" = 1");
         task.stop();
-
+        Connection con = db.getConnection();
+        ResultSet rs = con.createStatement().executeQuery("select count(*) from \"table\" where \"flag\" = 0");
+        rs.next();
+        assertEquals(1, rs.getInt(1));
+        rs.close();
     }
     @After
     public void checkRecordInDBAfter() throws SQLException {
@@ -141,8 +145,4 @@ public class JdbcFlagSourceTaskTest {
         log.info("calling commit record method with offset");
         task.commitRecord(record, metadata1);
     }
-//    @After
-//    public void stop() {
-//        task.stop();
-//    }
 }

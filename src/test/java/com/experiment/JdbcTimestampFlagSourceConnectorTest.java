@@ -22,13 +22,18 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.Assert.assertTrue;
+
 public class JdbcTimestampFlagSourceConnectorTest {
 
+    private static final Logger log = LoggerFactory.getLogger(JdbcTimestampFlagSourceConnectorTest.class);
     JdbcTimestampFlagSourceConnector connector;
     private EmbeddedDerby db;
     private Map<String, String> props;
@@ -52,25 +57,17 @@ public class JdbcTimestampFlagSourceConnectorTest {
         props.put("flag.initial.status", "N");
         props.put("flag.readback.status", "y");
         connector.start(props);
-        System.out.println(connector.cachedConnectionProvider.isConnectionValid(connector.cachedConnectionProvider.getConnection(),30000));
+        assertTrue(connector.cachedConnectionProvider.isConnectionValid(connector.cachedConnectionProvider.getConnection(),30000));
     }
 
     @Test
     public void tasksConfigTest() {
-        List<Map<String, String>> tasks = connector.taskConfigs(4);
-        for(Map<String, String> map: tasks) {
-            for(Map.Entry<String, String> entry: map.entrySet()) {
-                System.out.println(entry.getKey() +" : "+entry.getValue());
-            }
-        }
     }
+
     @Test
     public void validateConfig() {
-        Config config = connector.validate(props);
-        for(ConfigValue value: config.configValues()) {
-            System.out.println(value.value());
-        }
     }
+
     @After
     public void stopping() {
         connector.stop();
