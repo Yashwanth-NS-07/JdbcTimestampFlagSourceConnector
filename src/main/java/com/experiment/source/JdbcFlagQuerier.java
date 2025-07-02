@@ -102,6 +102,9 @@ public class JdbcFlagQuerier {
                 StringToSqlType.convert(flagInitialStatus, tableDefinition.definitionForColumn(flagColumnId.name()).type()),
                 tableDefinition.definitionForColumn(flagColumnId.name()));
         log.debug("Statement to Execute: {}", stmt);
+        log.debug("Setting max rows per query");
+        // user have control on query but still more than 10000 is overhead so this property
+        stmt.setMaxRows(10000);
         log.info("Executing query.");
         resultSet = stmt.executeQuery();
         // validating supported timestamp column type for sqlserver
