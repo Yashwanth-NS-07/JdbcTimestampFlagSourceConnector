@@ -17,7 +17,6 @@ package com.experiment.util;
 
 import java.math.BigDecimal;
 import java.sql.Types;
-import java.time.format.DateTimeParseException;
 
 public class StringToSqlType {
     public static Object convert(String value, int sqlType) {
@@ -59,15 +58,13 @@ public class StringToSqlType {
                 case Types.NCHAR:
                 case Types.NVARCHAR:
                 case Types.LONGNVARCHAR:
-                    return value; // Already a strin
+                    return value; // Already a string
 
                 default:
                     throw new IllegalArgumentException("Unsupported SQL data type for Flag Column: " + sqlType);
             }
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Invalid number format for " + sqlType + ": " + value, e);
-        } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("Invalid date/time format for " + sqlType + ": " + value, e);
         } catch (Exception e) {
             throw new IllegalArgumentException("Conversion error for " + sqlType + ": " + value, e);
         }

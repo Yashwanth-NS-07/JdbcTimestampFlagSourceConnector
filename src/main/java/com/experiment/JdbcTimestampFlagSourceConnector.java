@@ -48,12 +48,12 @@ public class JdbcTimestampFlagSourceConnector extends SourceConnector {
 
     @Override
     public void start(Map<String, String> properties) throws ConnectException {
-        log.info("Starting Jdbc Flag Source Connector");
+        log.info("Starting Jdbc Timestamp Flag Source Connector");
         try {
             configProperties = properties;
             config = new JdbcFlagSourceConnectorConfig(properties);
         } catch (ConfigException e) {
-            throw new ConnectException("Couldn't start the jdbc flag source connector due to config error", e);
+            throw new ConnectException("Couldn't start the jdbc timestamp flag source connector due to config error", e);
         }
         final String dbUrl = config.getString(JdbcSourceConnectorConfig.CONNECTION_URL_CONFIG);
         final int maxConnectionAttempts = config.getInt(JdbcSourceConnectorConfig.CONNECTION_ATTEMPTS_CONFIG);
@@ -108,12 +108,12 @@ public class JdbcTimestampFlagSourceConnector extends SourceConnector {
 
     @Override
     public void stop() {
-        log.info("Stopping the jdbc timestamp flag connector");
+        log.info("Stopping the Jdbc Timestamp Flag Source Connector");
         cachedConnectionProvider.close();
         try {
             if(dialect != null) dialect.close();
         } catch (Throwable t) {
-            log.warn("Error while closing the {} dailect: ", dialect, t);
+            log.warn("Error while closing the {} dialect: ", dialect, t);
         } finally {
             dialect = null;
         }
