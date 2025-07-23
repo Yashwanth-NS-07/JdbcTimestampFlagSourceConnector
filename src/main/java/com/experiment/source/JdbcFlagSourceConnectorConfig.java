@@ -32,6 +32,14 @@ public class JdbcFlagSourceConnectorConfig extends JdbcSourceConnectorConfig {
     public static final String TIMESTAMP_COLUMN_CONFIG = "timestamp.column.name";
     public static final String PRIMARY_KEYS_CONFIG = "primary.key.column.names";
     public static final String TABLE_NAME_FORMAT_CONFIG = "table.name.format";
+    public static final String TIMESTAMP_DELAY_INTERVAL_MS = "timestamp.delay.interval.ms";
+    public static final long TIMESTAMP_DELAY_INTERVAL_MS_DEFAULT = 1000;
+    public static final String MAX_ROWS_PER_QUERY = "max.rows.per.query";
+    public static final int MAX_ROWS_PER_QUERY_DEFAULT = 5000; // five thousand
+    public static final String MAX_RETRIES = "max.retries";
+    public static final int MAX_RETRIES_DEFAULT = 10;
+    public static final String RETRY_BACKOFF_MS = "retry.backoff.ms";
+    public static final int RETRY_BACKOFF_MS_DEFAULT = 3000;
 
     public JdbcFlagSourceConnectorConfig(Map<String, String> props) {
         super(CONFIG_DEF, props);
@@ -81,12 +89,18 @@ public class JdbcFlagSourceConnectorConfig extends JdbcSourceConnectorConfig {
             ConfigDef.Importance.HIGH,
             "Timestamp column name of table"
         ).define(
+            TIMESTAMP_DELAY_INTERVAL_MS,
+            ConfigDef.Type.LONG,
+            TIMESTAMP_DELAY_INTERVAL_MS_DEFAULT,
+            ConfigDef.Importance.HIGH,
+            "Data will be fetched until current time minus the delay(in milli seconds), it allows the transaction with the earlier timestamp to complete."
+        ).define(
             PRIMARY_KEYS_CONFIG,
             ConfigDef.Type.STRING,
             "",
             new ConfigDef.NonNullValidator(),
             ConfigDef.Importance.HIGH,
-            "Primary keys column names for table - separte the primary keys by ,(comma)"
+            "Primary keys column names for table - separate the primary keys by ,(comma)"
         ).define(
            TABLE_NAME_FORMAT_CONFIG,
            ConfigDef.Type.STRING,
@@ -97,6 +111,27 @@ public class JdbcFlagSourceConnectorConfig extends JdbcSourceConnectorConfig {
                     "if the database don't have concept of schema like mysql and " +
                     "mariadb, just put the table name. Note: if you are using quote identifiers(it uses by default if not specified to not to do so)" +
                     " in that cases you need to mention exact name like uppercase in oracle and lowercase in postgres"
+        ).define(
+            MAX_ROWS_PER_QUERY,
+            ConfigDef.Type.INT,
+            MAX_ROWS_PER_QUERY_DEFAULT,
+            ConfigDef.Range.between(1, 10000),
+            ConfigDef.Importance.MEDIUM,
+            "Maximum number of rows fetched when the query is fired"
+        ).define(
+            MAX_RETRIES,
+            ConfigDef.Type.INT,
+            MAX_RETRIES_DEFAULT,
+            ConfigDef.Range.atLeast(0),
+            ConfigDef.Importance.LOW,
+            "Maximum number of retries if the readback fails"
+        ).define(
+            RETRY_BACKOFF_MS,
+            ConfigDef.Type.INT,
+            RETRY_BACKOFF_MS_DEFAULT,
+            ConfigDef.Range.atLeast(0),
+            ConfigDef.Importance.LOW,
+            "Backoff time in milli seconds during readback retries"
         );
 
         return config;
@@ -111,7 +146,7 @@ public class JdbcFlagSourceConnectorConfig extends JdbcSourceConnectorConfig {
                 "catalog.pattern", // adding because of dependency for dialect
                 "schema.pattern", // adding because of dependency for dialect
                 "table.types", // adding because of dependency for dialect
-                "timestamp.granularity", // adding because of dependency for dialect
+                "timestamp.granularity",
                 "numeric.precision.mapping",
                 "numeric.mapping",
                 "dialect.name",

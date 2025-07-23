@@ -35,6 +35,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import static io.confluent.connect.jdbc.source.JdbcSourceConnectorConfig.TimestampGranularity.CONNECT_LOGICAL;
+
 public class JdbcFlagSourceTask extends SourceTask {
 
     private static final Logger log = LoggerFactory.getLogger(JdbcFlagSourceTask.class);
@@ -46,9 +48,9 @@ public class JdbcFlagSourceTask extends SourceTask {
     //visible for testing purpose
     CachedConnectionProvider cachedConnectionProvider;
     private DatabaseDialect dialect;
-    TableId tableId;
-    SchemaMapping schemaMapping;
-    private int batchMaxRows;
+    private TableId tableId;
+    private SchemaMapping schemaMapping;
+    private int maxRowsPerQuery;
     private int queryRetryAttempts ;
     private int queryRetryAttempted ;
     private long numberOfLastPolledRecords;
@@ -56,14 +58,14 @@ public class JdbcFlagSourceTask extends SourceTask {
     //visible for testing purpose
     JdbcFlagQuerier querier;
     JdbcFlagDbWriter writer;
-    ColumnId flagColumnId = null;
-    ColumnId timeStampColumnId = null;
-    List<ColumnId> primaryKeyColumnIds;
-    List<String> readBackKeyFields;
-    Set<String> readBackFields;
-    TableDefinition tableDefinition;
+    private ColumnId flagColumnId;
+    private ColumnId timeStampColumnId;
+    private List<ColumnId> primaryKeyColumnIds;
+    private List<String> readBackKeyFields;
+    private Set<String> readBackFields;
+    private TableDefinition tableDefinition;
 
-    Map<SourceRecord, RecordMetadata> commitedRecords = new ConcurrentHashMap<>();
+    private final Map<SourceRecord, RecordMetadata> commitedRecords = new ConcurrentHashMap<>();
 
     public JdbcFlagSourceTask(Time time) { this.time = time; }
     public JdbcFlagSourceTask() { time = Time.SYSTEM; }
@@ -76,14 +78,20 @@ public class JdbcFlagSourceTask extends SourceTask {
         } catch (ConfigException ex) {
             throw new ConfigException("Couldn't start the JdbcFlagSourceTask due configuration error", ex);
         }
-        queryRetryAttempted = 0;
+        // checking timestamp granularity
+        if(!config.getString(JdbcSourceConnectorConfig.TIMESTAMP_GRANULARITY_CONFIG).equals(CONNECT_LOGICAL.name().toLowerCase(Locale.ROOT))) {
+            throw new ConfigException("Only CONNECT_LOGICAL timestamp granularity is supported");
+        }
         queryRetryAttempts = config.getInt(JdbcSourceConnectorConfig.QUERY_RETRIES_CONFIG);
         final String url = config.getString(JdbcSourceConnectorConfig.CONNECTION_URL_CONFIG);
         final int maxConnAttempts = config.getInt(JdbcSourceConnectorConfig.CONNECTION_ATTEMPTS_CONFIG);
         final long retryBackoff = config.getLong(JdbcSourceConnectorConfig.CONNECTION_BACKOFF_CONFIG);
         final String dialectName = config.getString(JdbcSourceConnectorConfig.DIALECT_NAME_CONFIG);
-        batchMaxRows = config.getInt(JdbcSourceConnectorConfig.BATCH_MAX_ROWS_CONFIG);
+        maxRowsPerQuery = config.getInt(JdbcFlagSourceConnectorConfig.MAX_ROWS_PER_QUERY);
 
+        // resetting everytime the task starts/restarts
+        commitedRecords.clear();
+        queryRetryAttempted = 0;
         numberOfLastPolledRecords = Long.MAX_VALUE;
 
         if(dialectName != null && !dialectName.trim().isEmpty()) {
@@ -126,7 +134,6 @@ public class JdbcFlagSourceTask extends SourceTask {
                     throw new ConfigException(ex.getMessage(), ex);
                 }
 
-                log.info("Validating columns exist for table: {}", tableId);
                 Map<ColumnId, ColumnDefinition> defnsById = dialect.describeColumns(resultSetMetaData);
                 Set<String> columnsFromQuery = defnsById.keySet().stream()
                         .map(ColumnId::name)
@@ -238,6 +245,11 @@ public class JdbcFlagSourceTask extends SourceTask {
                                     "Alias is not supported for Timestamp Column, use transforms instead."
                             );
                         }
+                        if(entry.getValue().scale() > 3) {
+                            throw new ConnectException(
+                                    "Fractional seconds precision of Timestamp '" + entry.getKey().name() + "' column should be less than or equal to 3"
+                            );
+                        }
                     }
                     for(String primaryKey: primaryKeys) {
                         if(primaryKey.equalsIgnoreCase(entry.getKey().name())) {
@@ -245,6 +257,13 @@ public class JdbcFlagSourceTask extends SourceTask {
                             if(!entry.getKey().aliasOrName().equals(entry.getKey().name())) {
                                 throw new ConfigException(
                                         "Alias is not supported for Primary keys, use transforms instead."
+                                );
+                            }
+                            if(entry.getValue().type() == Types.TIMESTAMP
+                            && entry.getValue().scale() > 3) {
+                                throw new ConnectException(
+                                        "Fractional seconds precision of Primary key '" + entry.getKey().name() + "'"
+                                               + " column should be less than or equal to 3"
                                 );
                             }
                         }
@@ -258,11 +277,14 @@ public class JdbcFlagSourceTask extends SourceTask {
                         flagColumn,
                         config.getString(JdbcFlagSourceConnectorConfig.FLAG_COLUMN_INITIAL_STATUS_CONFIG),
                         flagColumnId,
+                        config.getLong(JdbcFlagSourceConnectorConfig.TIMESTAMP_DELAY_INTERVAL_MS),
                         timeStampColumnId,
+                        config.timeZone(),
                         tableDefinition,
                         schemaMapping,
                         config.getString(JdbcSourceConnectorConfig.TOPIC_PREFIX_CONFIG),
-                        config.getString(JdbcSourceConnectorConfig.QUERY_SUFFIX_CONFIG)
+                        config.getString(JdbcSourceConnectorConfig.QUERY_SUFFIX_CONFIG),
+                        config.getInt(JdbcFlagSourceConnectorConfig.MAX_ROWS_PER_QUERY)
                 );
             } finally {
                 con.setAutoCommit(autoCommit);
@@ -288,11 +310,18 @@ public class JdbcFlagSourceTask extends SourceTask {
         inPollMethod.set(true);
 
         // writer
-        giveReadback();
+        try {
+            giveReadback();
+        } catch (ConnectException ce) {
+            log.error("Error while giving the Readback", ce);
+            closeResource();
+            inPollMethod.set(false);
+            throw new ConnectException(ce);
+        }
 
         // reader
-        if(numberOfLastPolledRecords < batchMaxRows) {
-            log.debug("Sleeping in poll method because number of rows returned by last poll is less than batch.max.rows");
+        if(numberOfLastPolledRecords < maxRowsPerQuery) {
+            log.debug("Sleeping in poll method because number of rows returned by last poll is less than max.rows.per.query");
             time.sleep(config.getInt(JdbcSourceConnectorConfig.POLL_INTERVAL_MS_CONFIG));
         }
         numberOfLastPolledRecords = 0;
@@ -362,32 +391,47 @@ public class JdbcFlagSourceTask extends SourceTask {
         log.debug("Giving readback for the last polled records");
         if (numberOfLastPolledRecords == Long.MAX_VALUE) return;
         CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-            while (commitedRecords.size() != numberOfLastPolledRecords) {
+            while (commitedRecords.size() < numberOfLastPolledRecords) {
                 time.sleep(10);
             }
         });
         try {
             log.trace("Waiting for brokers ack");
-            future.get(60, TimeUnit.SECONDS);
+            future.get(120, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             log.warn("Thread interrupted/timed-out while waiting for brokers ack," +
                     " proceeding with the current commited records.");
         }
         log.debug("Polled record: {}, Number records received broker ack: {}", numberOfLastPolledRecords, commitedRecords.size());
 
-        try {
-            if(numberOfLastPolledRecords != (long)commitedRecords.size()) {
-                log.warn("Number of Polled records {} not equals to the Number for Acks {} received from broker",
-                        numberOfLastPolledRecords,
-                        commitedRecords.size());
-            }
-            writer.write(commitedRecords);
-            log.info("Successfully wrote {} records.", commitedRecords.size());
-            commitedRecords.clear();
-        } catch (SQLException sqle) {
-            throw new ConnectException(sqle);
+        if (numberOfLastPolledRecords != (long) commitedRecords.size()) {
+            log.warn("Number of Polled records {} not equals to the Number for Acks {} received from broker",
+                    numberOfLastPolledRecords,
+                    commitedRecords.size());
         }
 
+        int remainingRetries = config.getInt(JdbcFlagSourceConnectorConfig.MAX_RETRIES);
+        while(true) {
+            try {
+                writer.write(commitedRecords);
+                log.info("Successfully wrote {} records.", commitedRecords.size());
+                commitedRecords.clear();
+                break;
+            } catch (SQLException sqle) {
+                log.warn("ReadBack of {} records failed, remaining retries: {}",
+                        commitedRecords.size(),
+                        remainingRetries,
+                        sqle);
+                if(remainingRetries-- > 0) {
+                    writer.closeQueitly();
+                    initwriter();
+                    log.trace("Sleeping before retrying for readback");
+                    time.sleep(config.getInt(JdbcFlagSourceConnectorConfig.RETRY_BACKOFF_MS));
+                } else {
+                    throw new ConnectException(sqle);
+                }
+            }
+        }
     }
 
     private void initwriter() {
@@ -409,7 +453,7 @@ public class JdbcFlagSourceTask extends SourceTask {
                 tableDefinition,
                 flagColumnId,
                 config.getString(JdbcFlagSourceConnectorConfig.FLAG_COLUMN_READBACK_STATUS_CONFIG));
-        log.info("Jdbc Flag readback writer initialized");readBackFields.add(flagColumnId.name());
+        log.info("Jdbc Flag readback writer initialized");
     }
 
     @Override
@@ -417,7 +461,7 @@ public class JdbcFlagSourceTask extends SourceTask {
         log.info("Stopping Jdbc Flag Source Task");
         running.set(false);
         while(inPollMethod.get()) {
-            log.trace("Task Thread is running in poll method waiting for it to complete.");
+            log.trace("Task Thread is running in poll method waiting for it to complete");
             time.sleep(1000);
         }
         giveReadback();

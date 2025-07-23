@@ -50,17 +50,17 @@ public class JdbcFlagSourceTaskTest {
                 "table",
                 "id", "INTEGER",
                 "flag", "integer",
-                "lastdate", "TIMESTAMP"
+                "lastdate", "DATE"
         );
 
         String sql1 = "INSERT INTO \"table\" (\"id\", \"flag\", \"lastdate\") " +
-                "VALUES (1, 0, TIMESTAMP('2025-06-01 00:00:00'))";
+                "VALUES (1, 0, DATE('2025-06-01'))";
 
         String sql2 = "INSERT INTO \"table\" (\"id\", \"flag\", \"lastdate\") " +
-                "VALUES (2, 0, TIMESTAMP('2025-06-02 00:00:00'))";
+                "VALUES (2, 0, DATE('2025-06-02'))";
 
         String sql3 = "INSERT INTO \"table\" (\"id\", \"flag\", \"lastdate\") " +
-                "VALUES (3, 0, TIMESTAMP('2025-06-03 00:00:00'))";
+                "VALUES (3, 0, DATE('2025-06-03'))";
         db.execute(sql1);
         db.execute(sql2);
         db.execute(sql3);
@@ -90,13 +90,14 @@ public class JdbcFlagSourceTaskTest {
         props.put("primary.key.column.names", "id  ");
         props.put("query", "select \"id\", \"flag\", \"lastdate\" from \"table\"");
         //props.put("query", "SELECT * FROM (SELECT \"id\", \"flag\", \"lastdate\" FROM \"table\") AS sub");
-        props.put("query.suffix", "AND \"lastdate\" < CURRENT_TIMESTAMP ORDER BY \"lastdate\" DESC");
+        props.put("query.suffix", "AND \"lastdate\" < CURRENT_DATE ORDER BY \"lastdate\" DESC");
         props.put("flag.initial.status", "0");
         props.put("table.name.format", "table");
         props.put("flag.readback.status", "1");
-        //props.put("db.timezone", "Asia/Kolkata");
+        props.put("db.timezone", "Asia/Kolkata");
+        props.put("timestamp.delay.interval.ms", "0");
         task.start(props);
-        task.querier.startQuery(task.cachedConnectionProvider.getConnection());
+        //task.querier.startQuery(task.cachedConnectionProvider.getConnection());
         CompletableFuture<List<SourceRecord>> future = CompletableFuture.supplyAsync(() -> {
             try {
                 return task.poll();
@@ -110,7 +111,7 @@ public class JdbcFlagSourceTaskTest {
             for(SourceRecord record: records) {
                 task.commitRecord(record, new RecordMetadata(new TopicPartition("topic", 0), ++offset, 2, 8987, 9, 0));
             }
-        db.execute("update \"table\" set \"lastdate\" = TIMESTAMP('2025-06-03 00:00:00') where \"id\" = 1");
+        db.execute("update \"table\" set \"lastdate\" = DATE('2025-06-03') where \"id\" = 1");
         task.stop();
         Connection con = db.getConnection();
         ResultSet rs = con.createStatement().executeQuery("select count(*) from \"table\" where \"flag\" = 0");

@@ -30,6 +30,7 @@ public class TestJdbcFlagSourceConnectorConfig {
         props.put("connection.url", "url");
         props.put("flag.initial.status", "N");
         props.put("flag.readback.status", "Y");
+        props.put("max.rows.per.query", "10000");
         JdbcFlagSourceConnectorConfig config = new JdbcFlagSourceConnectorConfig(props);
     }
 }

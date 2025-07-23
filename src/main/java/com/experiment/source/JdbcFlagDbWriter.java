@@ -122,14 +122,14 @@ public class JdbcFlagDbWriter {
             throw e;
         }
         buffer = null;
-        log.info("Completed write operation for {} records to the database", records.size());
+        log.debug("Completed write operation for {} records to the database", records.size());
     }
 
     private CachedConnectionProvider connectionProvider(int maxConnAttempts, long retryBackoff) {
         return new CachedConnectionProvider(this.dialect, maxConnAttempts, retryBackoff) {
             @Override
             protected void onConnect(final Connection connection) throws SQLException {
-                log.info("JdbcDbWriter Connected");
+                log.info("JdbcFlagDbWriter Connected");
                 connection.setAutoCommit(false);
             }
         };

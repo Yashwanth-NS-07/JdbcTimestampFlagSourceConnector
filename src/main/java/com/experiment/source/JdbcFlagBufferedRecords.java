@@ -87,6 +87,7 @@ public class JdbcFlagBufferedRecords {
                     asColumns(fieldsMetadata.nonKeyFieldNames),
                     tableDefinition
             );
+            log.debug("Query using to give ReadBack: {}", insertSql);
             updatePreparedStatement = dialect.createPreparedStatement(conn, insertSql);
             updateStatementBinder = dialect.statementBinder(
                     updatePreparedStatement,

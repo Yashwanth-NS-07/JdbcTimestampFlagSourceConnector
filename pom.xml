@@ -9,7 +9,7 @@
   </parent>
 
   <groupId>com.experiment</groupId>
-  <artifactId>JdbcTimestampFlagSourceConnector</artifactId>
+  <artifactId>jdbc-timestamp-flag-source-connector</artifactId>
   <version>1.0.0</version>
   <packaging>jar</packaging>
 
@@ -73,7 +73,6 @@
       <groupId>io.confluent</groupId>
       <artifactId>kafka-connect-jdbc</artifactId>
       <version>${kafka.connect.jdbc.version}</version>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.kafka</groupId>

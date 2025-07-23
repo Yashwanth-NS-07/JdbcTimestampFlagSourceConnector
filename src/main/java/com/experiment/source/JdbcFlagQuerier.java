@@ -33,20 +33,23 @@ public class JdbcFlagQuerier {
 
     private static final Logger log = LoggerFactory.getLogger(JdbcFlagQuerier.class);
 
-    DatabaseDialect dialect;
-    ResultSet resultSet;
-    Connection db;
-    String query;
-    TableId tableId;
-    String flagColumn;
-    String flagInitialStatus;
-    ColumnId flagColumnId;
-    ColumnId timeStampColumnId;
-    TableDefinition tableDefinition;
-    SchemaMapping schemaMapping;
-    PreparedStatement stmt;
-    String topic;
-    String querySuffix;
+    private final DatabaseDialect dialect;
+    private ResultSet resultSet;
+    private Connection db;
+    private final String query;
+    private final TableId tableId;
+    private final String flagColumn;
+    private final String flagInitialStatus;
+    private final ColumnId flagColumnId;
+    private final long timestampDelay;
+    private final ColumnId timeStampColumnId;
+    private final TimeZone timeZone;
+    private final TableDefinition tableDefinition;
+    private final SchemaMapping schemaMapping;
+    private PreparedStatement stmt;
+    private final String topic;
+    private final String querySuffix;
+    private final int maxRowsPerQuery;
 
     public JdbcFlagQuerier(
             DatabaseDialect dialect,
@@ -55,11 +58,14 @@ public class JdbcFlagQuerier {
             String flagColumn,
             String flagInitialStatus,
             ColumnId flagColumnId,
+            long timestampDelay,
             ColumnId timeStampColumnId,
+            TimeZone timeZone,
             TableDefinition tableDefinition,
             SchemaMapping schemaMapping,
             String topic,
-            String querySuffix
+            String querySuffix,
+            int maxRowsPerQuery
     )  {
         this.dialect = dialect;
         this.query = query;
@@ -67,11 +73,14 @@ public class JdbcFlagQuerier {
         this.flagColumn = flagColumn;
         this.flagInitialStatus = flagInitialStatus;
         this.flagColumnId = flagColumnId;
+        this.timestampDelay = timestampDelay;
         this.timeStampColumnId = timeStampColumnId;
+        this.timeZone = timeZone;
         this.tableDefinition = tableDefinition;
         this.schemaMapping = schemaMapping;
         this.topic = topic;
         this.querySuffix = querySuffix;
+        this.maxRowsPerQuery = maxRowsPerQuery;
     }
 
     public PreparedStatement getOrCreateStatement(Connection db) throws SQLException {
@@ -80,10 +89,17 @@ public class JdbcFlagQuerier {
         ExpressionBuilder builder = dialect.expressionBuilder();
         builder.append(query);
         builder.append(" WHERE ");
+
+        // flag column
         builder.appendList()
                 .delimitedBy(", ")
                 .transformedBy(ExpressionBuilder.columnNamesWith(" = ?"))
                 .of(Collections.singletonList(flagColumnId));
+
+        // timestamp column
+        builder.append(" AND ");
+        builder.appendColumnName(timeStampColumnId.name());
+        builder.append(" <= ? ");
 
         addSuffixIfPresent(builder);
         String finalQueryString = builder.toString();
@@ -96,23 +112,28 @@ public class JdbcFlagQuerier {
         this.db = db;
         stmt = getOrCreateStatement(db);
         log.trace("Sql Type for flag column: '{}' is : {}", flagColumnId.name(), tableDefinition.definitionForColumn(flagColumnId.name()).type());
+
+        // binding flag column initial value
         dialect.bindField(stmt,
                 1,
                 schemaMapping.schema().field(flagColumnId.name()).schema(),
                 StringToSqlType.convert(flagInitialStatus, tableDefinition.definitionForColumn(flagColumnId.name()).type()),
                 tableDefinition.definitionForColumn(flagColumnId.name()));
+
+        // binding timestamp column value
+        stmt.setTimestamp(2, endTimestampValue(), DateTimeUtils.getTimeZoneCalendar(timeZone));
+
         log.debug("Statement to Execute: {}", stmt);
-        log.debug("Setting max rows per query");
-        // user have control on query but still more than 10000 is overhead so this property
-        stmt.setMaxRows(10000);
-        log.info("Executing query.");
+        log.debug("Setting max rows per query: {}", maxRowsPerQuery);
+        stmt.setMaxRows(maxRowsPerQuery);
+        log.info("Executing query");
         resultSet = stmt.executeQuery();
         // validating supported timestamp column type for sqlserver
         dialect.validateSpecificColumnTypes(resultSet.getMetaData(), Collections.singletonList(timeStampColumnId));
     }
 
     public List<SourceRecord> extractRecords() throws SQLException {
-        log.trace("Extracting Records from ResultSet.");
+        log.trace("Extracting Records from ResultSet");
         List<SourceRecord> records = new ArrayList<>();
         while(resultSet.next()) {
             records.add(extractRecord());
@@ -134,6 +155,14 @@ public class JdbcFlagQuerier {
             }
         }
         return new SourceRecord(null, null, topic, record.schema(), record);
+    }
+
+    public Timestamp endTimestampValue() throws SQLException {
+        final long currentDbTime = dialect.currentTimeOnDB(
+                stmt.getConnection(),
+                DateTimeUtils.getTimeZoneCalendar(timeZone)
+        ).getTime();
+        return new Timestamp(currentDbTime - timestampDelay);
     }
 
     public void reset() {
