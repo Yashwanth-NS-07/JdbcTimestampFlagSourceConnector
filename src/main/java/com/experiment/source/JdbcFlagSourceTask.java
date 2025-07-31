@@ -80,8 +80,15 @@ public class JdbcFlagSourceTask extends SourceTask {
         }
         // checking timestamp granularity
         if(!config.getString(JdbcSourceConnectorConfig.TIMESTAMP_GRANULARITY_CONFIG).equals(CONNECT_LOGICAL.name().toLowerCase(Locale.ROOT))) {
-            throw new ConfigException("Only CONNECT_LOGICAL timestamp granularity is supported");
+            throw new ConfigException("Only connect_logical is supported for timestamp.granularity");
         }
+
+        // checking numeric.mapping property
+        if(config.numericMapping() == JdbcSourceConnectorConfig.NumericMapping.BEST_FIT_EAGER_DOUBLE
+        || config.numericMapping() == JdbcSourceConnectorConfig.NumericMapping.PRECISION_ONLY) {
+            throw new ConfigException("precision_only and best_fit_eager_double are not supported numeric.mapping");
+        }
+
         queryRetryAttempts = config.getInt(JdbcSourceConnectorConfig.QUERY_RETRIES_CONFIG);
         final String url = config.getString(JdbcSourceConnectorConfig.CONNECTION_URL_CONFIG);
         final int maxConnAttempts = config.getInt(JdbcSourceConnectorConfig.CONNECTION_ATTEMPTS_CONFIG);

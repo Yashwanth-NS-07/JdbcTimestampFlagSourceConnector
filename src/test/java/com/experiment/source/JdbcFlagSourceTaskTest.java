@@ -95,6 +95,8 @@ public class JdbcFlagSourceTaskTest {
         props.put("table.name.format", "table");
         props.put("flag.readback.status", "1");
         props.put("db.timezone", "Asia/Kolkata");
+        //props.put("numeric.mapping", "precision_only");
+        //props.put("numeric.mapping", "best_fit_eager_double");
         props.put("timestamp.delay.interval.ms", "0");
         task.start(props);
         //task.querier.startQuery(task.cachedConnectionProvider.getConnection());
