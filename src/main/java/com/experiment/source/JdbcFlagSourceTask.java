@@ -54,7 +54,6 @@ public class JdbcFlagSourceTask extends SourceTask {
     private int queryRetryAttempts ;
     private int queryRetryAttempted ;
     private long numberOfLastPolledRecords;
-    private static final int CONSECUTIVE_EMPTY_RESULTS_BEFORE_RETURN = 1;
     //visible for testing purpose
     JdbcFlagQuerier querier;
     JdbcFlagDbWriter writer;
@@ -329,10 +328,9 @@ public class JdbcFlagSourceTask extends SourceTask {
         // reader
         if(numberOfLastPolledRecords < maxRowsPerQuery) {
             log.debug("Sleeping in poll method because number of rows returned by last poll is less than max.rows.per.query");
-            time.sleep(config.getInt(JdbcSourceConnectorConfig.POLL_INTERVAL_MS_CONFIG));
+            sleep();
         }
         numberOfLastPolledRecords = 0;
-        int consecutiveEmptyResults = 0;
         while(running.get()) {
 
             List<SourceRecord> results;
@@ -341,16 +339,8 @@ public class JdbcFlagSourceTask extends SourceTask {
                 results = new ArrayList<>(querier.extractRecords());
                 querier.reset();
                 if (results.isEmpty()) {
-                    log.trace("Sleeping in poll method because result set is empty and consecutive empty results: {} < 3", consecutiveEmptyResults);
-                    time.sleep(config.getInt(JdbcSourceConnectorConfig.POLL_INTERVAL_MS_CONFIG));
-                    consecutiveEmptyResults++;
-                    if (consecutiveEmptyResults >= CONSECUTIVE_EMPTY_RESULTS_BEFORE_RETURN) {
-                        log.trace("More than " + consecutiveEmptyResults + " consecutive empty results, returning");
-                        inPollMethod.set(false);
-                        return null;
-                    }
-                    // checking the connector status everytime came out of sleep
-                    continue;
+                    inPollMethod.set(false);
+                    return null;
                 }
                 numberOfLastPolledRecords = results.size();
                 log.trace("Number of last Polled Records: {}", numberOfLastPolledRecords);
@@ -403,7 +393,7 @@ public class JdbcFlagSourceTask extends SourceTask {
             }
         });
         try {
-            log.trace("Waiting for brokers ack");
+            log.trace("Waiting 2 minutes maximum for brokers ack");
             future.get(120, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             log.warn("Thread interrupted/timed-out while waiting for brokers ack," +
@@ -510,6 +500,20 @@ public class JdbcFlagSourceTask extends SourceTask {
             log.warn("Record metadata is null, so not using the record to give readback");
         } else {
             log.warn("Record metadata is not null but also don't have any offset means not received ack from broker, so not using the record to give readback");
+        }
+    }
+
+    public void sleep() {
+        long nextPoll = time.milliseconds() + config.getInt(JdbcSourceConnectorConfig.POLL_INTERVAL_MS_CONFIG);
+        while(running.get()) {
+            long now = time.milliseconds();
+            long sleepMs = Math.min(nextPoll - now, 1000);
+            if(sleepMs > 0) {
+                log.trace("Waiting {} ms to poll {} next", nextPoll - now, querier.toString());
+                time.sleep(sleepMs);
+            } else {
+                return;
+            }
         }
     }
 

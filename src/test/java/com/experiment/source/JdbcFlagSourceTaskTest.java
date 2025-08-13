@@ -95,6 +95,7 @@ public class JdbcFlagSourceTaskTest {
         props.put("table.name.format", "table");
         props.put("flag.readback.status", "1");
         props.put("db.timezone", "Asia/Kolkata");
+        props.put("poll.interval.ms", "10000");
         //props.put("numeric.mapping", "precision_only");
         //props.put("numeric.mapping", "best_fit_eager_double");
         props.put("timestamp.delay.interval.ms", "0");
@@ -114,7 +115,16 @@ public class JdbcFlagSourceTaskTest {
                 task.commitRecord(record, new RecordMetadata(new TopicPartition("topic", 0), ++offset, 2, 8987, 9, 0));
             }
         db.execute("update \"table\" set \"lastdate\" = DATE('2025-06-03') where \"id\" = 1");
+        future = CompletableFuture.supplyAsync(() -> {
+            try {
+                return task.poll();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        Thread.sleep(2000);
         task.stop();
+        future.get();
         Connection con = db.getConnection();
         ResultSet rs = con.createStatement().executeQuery("select count(*) from \"table\" where \"flag\" = 0");
         rs.next();
