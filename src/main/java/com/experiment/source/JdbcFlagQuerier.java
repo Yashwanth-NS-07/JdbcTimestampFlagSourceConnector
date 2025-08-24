@@ -26,7 +26,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -111,7 +115,7 @@ public class JdbcFlagQuerier {
         return stmt;
     }
 
-    public void startQuery (Connection db) throws SQLException {
+    public void startQuery(Connection db) throws SQLException {
         this.db = db;
         stmt = getOrCreateStatement(db);
         log.trace("Sql Type for flag column: '{}' is : {}", flagColumnId.name(), tableDefinition.definitionForColumn(flagColumnId.name()).type());
