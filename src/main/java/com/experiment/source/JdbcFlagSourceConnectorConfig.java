@@ -20,7 +20,10 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class JdbcFlagSourceConnectorConfig extends JdbcSourceConnectorConfig {
     private static final Logger log = LoggerFactory.getLogger(JdbcFlagSourceConnectorConfig.class);

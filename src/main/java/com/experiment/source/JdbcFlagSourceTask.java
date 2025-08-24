@@ -29,9 +29,25 @@ import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.sql.Connection;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.SQLNonTransientException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -146,19 +162,7 @@ public class JdbcFlagSourceTask extends SourceTask {
                         .map(String::toLowerCase)
                         .collect(Collectors.toSet());
 
-                String catalogFromQuery = null;
-                for(ColumnId columnIdkey: defnsById.keySet()) {
-                    if(columnIdkey.name().equalsIgnoreCase(flagColumn)) {
-                        catalogFromQuery = columnIdkey.tableId().catalogName();
-                    }
-                }
-
-                String[] tableNameFormat = config.getString(JdbcFlagSourceConnectorConfig.TABLE_NAME_FORMAT_CONFIG).split("\\.");
-                String table = tableNameFormat[tableNameFormat.length-1];
-                String schema = tableNameFormat.length >= 2? tableNameFormat[tableNameFormat.length-2]: null;
-                String catalog = con.getCatalog() == null ? catalogFromQuery: con.getCatalog();
-
-                tableId = new TableId(catalog, schema, table);
+                tableId = destinationTableId(config.getString(JdbcFlagSourceConnectorConfig.TABLE_NAME_FORMAT_CONFIG), con);
                 tableDefinition = dialect.describeTable(con, tableId);
 
                 log.info("Validating columns exist for table: {}", tableId);
@@ -177,7 +181,7 @@ public class JdbcFlagSourceTask extends SourceTask {
                         && !columnsFromTable.contains(flagColumn.toLowerCase(Locale.getDefault()))) {
                         throw new ConfigException(
                                 "Flag Column: " + flagColumn
-                                        + " does not exists in the table '" + table + "' nor in query"
+                                        + " does not exists in the table " + tableId + " nor in query"
                         );
                     } else if(!columnsFromQuery.contains(flagColumn.toLowerCase(Locale.getDefault()))) {
                         throw new ConfigException(
@@ -187,7 +191,7 @@ public class JdbcFlagSourceTask extends SourceTask {
                     } else  if(!columnsFromTable.contains(flagColumn.toLowerCase(Locale.getDefault()))){
                         throw new ConfigException(
                                 "Flag Column: " + flagColumn
-                                        + " exists in query but does not exists in the table '" + table + "'"
+                                        + " exists in query but does not exists in the table " + tableId
                         );
                     }
                 }
@@ -197,7 +201,7 @@ public class JdbcFlagSourceTask extends SourceTask {
                             && !columnsFromTable.contains(timeStampColumn.toLowerCase(Locale.getDefault()))) {
                         throw new ConfigException(
                                 "Timestamp Column: " + timeStampColumn
-                                        + " does not exists in the table '" + table + "' nor in query"
+                                        + " does not exists in the table " + tableId + " nor in query"
                         );
                     } else if(!columnsFromQuery.contains(timeStampColumn.toLowerCase(Locale.getDefault()))) {
                         throw new ConfigException(
@@ -207,7 +211,7 @@ public class JdbcFlagSourceTask extends SourceTask {
                     } else if(!columnsFromTable.contains(timeStampColumn.toLowerCase(Locale.getDefault()))){
                         throw new ConfigException(
                                 "Timestamp Column: " + timeStampColumn
-                                        + " exists in query but does not exists in the table '" + table + "'"
+                                        + " exists in query but does not exists in the table " + tableId
                         );
                     }
                 }
@@ -218,7 +222,7 @@ public class JdbcFlagSourceTask extends SourceTask {
                                 && !columnsFromTable.contains(primaryKey.toLowerCase(Locale.getDefault()))) {
                             throw new ConfigException(
                                     "Primary Key Column: " + primaryKey
-                                            + " does not exists in the table '" + table + "' nor in query"
+                                            + " does not exists in the table " + tableId + " nor in query"
                             );
                         } else if(!columnsFromQuery.contains(primaryKey.toLowerCase(Locale.getDefault()))) {
                             throw new ConfigException(
@@ -228,12 +232,12 @@ public class JdbcFlagSourceTask extends SourceTask {
                         } else if(!columnsFromTable.contains(primaryKey.toLowerCase(Locale.getDefault()))){
                             throw new ConfigException(
                                     "Primary Key Column: " + primaryKey
-                                            + " exists in query but does not exists in the table '" + table + "'"
+                                            + " exists in query but does not exists in the table " + tableId
                             );
                         }
                     }
                 }
-                log.trace("Primary Keys validated: {}", primaryKeys.toString());
+                log.trace("Primary Keys validated: {}", primaryKeys);
                 primaryKeyColumnIds = new ArrayList<>(primaryKeys.size());
                 for(Map.Entry<ColumnId, ColumnDefinition> entry: defnsById.entrySet()) {
                     if (entry.getKey().name().equalsIgnoreCase(flagColumn)) {
@@ -275,7 +279,7 @@ public class JdbcFlagSourceTask extends SourceTask {
                         }
                     }
                 }
-                schemaMapping = SchemaMapping.create(schema, resultSetMetaData, dialect);
+                schemaMapping = SchemaMapping.create(tableId.schemaName(), resultSetMetaData, dialect);
                 querier = new JdbcFlagQuerier(
                         dialect,
                         query,
@@ -298,6 +302,35 @@ public class JdbcFlagSourceTask extends SourceTask {
         } catch (SQLException e) {
             throw new ConnectException("Failed to validate the existence of the columns that are used to give the readback: flag column: " +
                     flagColumn + ", timestamp column: "+ timeStampColumn + ", and primary keys: "+ primaryKeys.toString(), e);
+        }
+    }
+
+    private TableId destinationTableId(String tableNameFormat, Connection con) {
+        TableId parsedTableId = dialect.parseTableIdentifier(tableNameFormat);
+        String finalCatalogName = (parsedTableId.catalogName() != null)
+                ? parsedTableId.catalogName()
+                : getCatalogSafe(con).orElse(null);
+        String finalSchemaName = (parsedTableId.schemaName() != null)
+                ? parsedTableId.schemaName()
+                : getSchemaSafe(con).orElse(null);
+        return new TableId(finalCatalogName, finalSchemaName, parsedTableId.tableName());
+    }
+
+    private Optional<String> getSchemaSafe(Connection con) {
+        try{
+            return Optional.ofNullable(con.getSchema());
+        } catch(AbstractMethodError | SQLException e) {
+            log.warn("Failed to get Schema: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    private Optional<String> getCatalogSafe(Connection con) {
+        try {
+            return Optional.ofNullable(con.getCatalog());
+        } catch(AbstractMethodError | SQLException e) {
+            log.warn("Failed to get Catalog: {}", e.getMessage());
+            return Optional.empty();
         }
     }
 
@@ -503,7 +536,7 @@ public class JdbcFlagSourceTask extends SourceTask {
         }
     }
 
-    public void sleep() {
+    private void sleep() {
         long nextPoll = time.milliseconds() + config.getInt(JdbcSourceConnectorConfig.POLL_INTERVAL_MS_CONFIG);
         while(running.get()) {
             long now = time.milliseconds();
