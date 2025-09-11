@@ -66,7 +66,7 @@ public class JdbcFlagSourceTask extends SourceTask {
     private DatabaseDialect dialect;
     private TableId tableId;
     private SchemaMapping schemaMapping;
-    private int maxRowsPerQuery;
+    private int batchMaxRows;
     private int queryRetryAttempts ;
     private int queryRetryAttempted ;
     private long numberOfLastPolledRecords;
@@ -109,7 +109,7 @@ public class JdbcFlagSourceTask extends SourceTask {
         final int maxConnAttempts = config.getInt(JdbcSourceConnectorConfig.CONNECTION_ATTEMPTS_CONFIG);
         final long retryBackoff = config.getLong(JdbcSourceConnectorConfig.CONNECTION_BACKOFF_CONFIG);
         final String dialectName = config.getString(JdbcSourceConnectorConfig.DIALECT_NAME_CONFIG);
-        maxRowsPerQuery = config.getInt(JdbcFlagSourceConnectorConfig.MAX_ROWS_PER_QUERY);
+        batchMaxRows = config.getInt(JdbcFlagSourceConnectorConfig.BATCH_MAX_ROWS_CONFIG);
 
         // resetting everytime the task starts/restarts
         commitedRecords.clear();
@@ -294,7 +294,7 @@ public class JdbcFlagSourceTask extends SourceTask {
                         schemaMapping,
                         config.getString(JdbcSourceConnectorConfig.TOPIC_PREFIX_CONFIG),
                         config.getString(JdbcSourceConnectorConfig.QUERY_SUFFIX_CONFIG),
-                        config.getInt(JdbcFlagSourceConnectorConfig.MAX_ROWS_PER_QUERY)
+                        config.getInt(JdbcSourceConnectorConfig.BATCH_MAX_ROWS_CONFIG)
                 );
             } finally {
                 con.setAutoCommit(autoCommit);
@@ -359,8 +359,8 @@ public class JdbcFlagSourceTask extends SourceTask {
         }
 
         // reader
-        if(numberOfLastPolledRecords < maxRowsPerQuery) {
-            log.debug("Sleeping in poll method because number of rows returned by last poll is less than max.rows.per.query");
+        if(numberOfLastPolledRecords < batchMaxRows) {
+            log.debug("Sleeping in poll method because number of rows returned by last poll is less than batch.max.rows");
             sleep();
         }
         numberOfLastPolledRecords = 0;

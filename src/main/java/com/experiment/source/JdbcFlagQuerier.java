@@ -56,7 +56,7 @@ public class JdbcFlagQuerier {
     private PreparedStatement stmt;
     private final String topic;
     private final String querySuffix;
-    private final int maxRowsPerQuery;
+    private final int batchMaxRows;
 
     public JdbcFlagQuerier(
             DatabaseDialect dialect,
@@ -72,7 +72,7 @@ public class JdbcFlagQuerier {
             SchemaMapping schemaMapping,
             String topic,
             String querySuffix,
-            int maxRowsPerQuery
+            int batchMaxRows
     )  {
         this.dialect = dialect;
         this.query = query;
@@ -87,7 +87,7 @@ public class JdbcFlagQuerier {
         this.schemaMapping = schemaMapping;
         this.topic = topic;
         this.querySuffix = querySuffix;
-        this.maxRowsPerQuery = maxRowsPerQuery;
+        this.batchMaxRows = batchMaxRows;
     }
 
     public PreparedStatement getOrCreateStatement(Connection db) throws SQLException {
@@ -131,8 +131,8 @@ public class JdbcFlagQuerier {
         stmt.setTimestamp(2, endTimestampValue(), DateTimeUtils.getTimeZoneCalendar(timeZone));
 
         log.debug("Statement to Execute: {}", stmt);
-        log.debug("Setting max rows per query: {}", maxRowsPerQuery);
-        stmt.setMaxRows(maxRowsPerQuery);
+        log.debug("Setting max rows per query: {}", batchMaxRows);
+        stmt.setMaxRows(batchMaxRows);
         log.info("Executing query");
         resultSet = stmt.executeQuery();
         // validating supported timestamp column type for sqlserver

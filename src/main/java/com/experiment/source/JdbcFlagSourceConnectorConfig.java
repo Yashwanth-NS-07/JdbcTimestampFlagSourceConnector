@@ -37,8 +37,8 @@ public class JdbcFlagSourceConnectorConfig extends JdbcSourceConnectorConfig {
     public static final String TABLE_NAME_FORMAT_CONFIG = "table.name.format";
     public static final String TIMESTAMP_DELAY_INTERVAL_MS = "timestamp.delay.interval.ms";
     public static final long TIMESTAMP_DELAY_INTERVAL_MS_DEFAULT = 1000;
-    public static final String MAX_ROWS_PER_QUERY = "max.rows.per.query";
-    public static final int MAX_ROWS_PER_QUERY_DEFAULT = 5000; // five thousand
+    // overriding jdbc source connector configs property
+    public static final int BATCH_MAX_ROWS_DEFAULT = 1000; // one thousand
     public static final String MAX_RETRIES = "max.retries";
     public static final int MAX_RETRIES_DEFAULT = 10;
     public static final String RETRY_BACKOFF_MS = "retry.backoff.ms";
@@ -115,9 +115,9 @@ public class JdbcFlagSourceConnectorConfig extends JdbcSourceConnectorConfig {
                     "mariadb, just put the table name. Note: if you are using quote identifiers(it uses by default if not specified to not to do so)" +
                     " in that cases you need to mention exact name like uppercase in oracle and lowercase in postgres"
         ).define(
-            MAX_ROWS_PER_QUERY,
+            BATCH_MAX_ROWS_CONFIG,
             ConfigDef.Type.INT,
-            MAX_ROWS_PER_QUERY_DEFAULT,
+            BATCH_MAX_ROWS_DEFAULT,
             ConfigDef.Range.between(1, 10000),
             ConfigDef.Importance.MEDIUM,
             "Maximum number of rows fetched when the query is fired"
@@ -159,7 +159,6 @@ public class JdbcFlagSourceConnectorConfig extends JdbcSourceConnectorConfig {
                 "transaction.isolation.mode",
                 "query.retry.attempts",
                 "poll.interval.ms",
-                "batch.max.rows",
                 "topic.prefix",
                 "db.timezone"};
         return new HashSet<>(Arrays.asList(inheritingConfigNames));
