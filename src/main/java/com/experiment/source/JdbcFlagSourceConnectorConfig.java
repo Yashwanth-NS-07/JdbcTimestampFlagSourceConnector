@@ -38,7 +38,7 @@ public class JdbcFlagSourceConnectorConfig extends JdbcSourceConnectorConfig {
     public static final String TIMESTAMP_DELAY_INTERVAL_MS = "timestamp.delay.interval.ms";
     public static final long TIMESTAMP_DELAY_INTERVAL_MS_DEFAULT = 1000;
     // overriding jdbc source connector configs property
-    public static final int BATCH_MAX_ROWS_DEFAULT = 1000; // one thousand
+    public static final int BATCH_MAX_ROWS_DEFAULT = 100; // one thousand
     public static final String MAX_RETRIES = "max.retries";
     public static final int MAX_RETRIES_DEFAULT = 10;
     public static final String RETRY_BACKOFF_MS = "retry.backoff.ms";
