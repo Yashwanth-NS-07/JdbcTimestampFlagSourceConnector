@@ -24,9 +24,11 @@ public class StringToSqlType {
             switch (sqlType) {
                 // INTEGER, SMALLINT, TINYINT
                 case Types.INTEGER:
-                case Types.SMALLINT:
-                case Types.TINYINT:
                     return Integer.parseInt(value.trim());
+                case Types.SMALLINT:
+                    return Short.parseShort(value.trim());
+                case Types.TINYINT:
+                    return Byte.parseByte(value.trim());
 
                 // BIGINT
                 case Types.BIGINT:
@@ -58,7 +60,7 @@ public class StringToSqlType {
                 case Types.NCHAR:
                 case Types.NVARCHAR:
                 case Types.LONGNVARCHAR:
-                    return value; // Already a string
+                    return value.trim(); // Already a string
 
                 default:
                     throw new IllegalArgumentException("Unsupported SQL data type for Flag Column: " + sqlType);
