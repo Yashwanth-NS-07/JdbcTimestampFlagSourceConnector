@@ -1,0 +1,30 @@
+JDBC Timestamp Flag Source Connector
+Copyright 2025 Yashwanth Gowda N S
+
+This project may include or depend upon third-party libraries with their own licenses:
+
+Kafka connect jdbc
+License: Confluent Community License Version 1.0
+Website: https://www.confluent.io/confluent-community-license
+Copyright: Copyright 2018 Confluent Inc
+
+Apache Kafka Connect API
+
+License: Apache License 2.0
+Website: https://kafka.apache.org/
+Copyright: The Apache Software Foundation
+
+SLF4J (Simple Logging Facade for Java)
+
+License: MIT License
+Website: http://www.slf4j.org/
+Copyright: QOS.ch
+
+Jackson (JSON processing library)
+
+License: Apache License 2.0
+Website: https://github.com/FasterXML/jackson
+Copyright: FasterXML, LLC
+
+For a complete list of dependencies and their licenses, please refer to the
+project's build configuration files

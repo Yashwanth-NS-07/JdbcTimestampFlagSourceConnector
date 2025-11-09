@@ -29,11 +29,11 @@ This connector is designed as a **thin extension layer** that works in conjuncti
                             │  records with flag=false     
                             ▼                              
 ┌─────────────────────────────────────────────────────────────┐
-│                                                             │
+│     JdbcTimestampFlagSourceConnector                        │
 │  SELECT * FROM table WHERE is_synced = false                │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            │  Streams to Kafka
+                            │  Streams to Kafka(remove is_synced in transforms if needed)
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                      Apache Kafka                           │
@@ -48,7 +48,6 @@ This connector is designed as a **thin extension layer** that works in conjuncti
                             │  Recives all the Acks
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│     JdbcTimestampFlagSourceConnector                        │
 │    Batch updates on the table                               │
 │                                                             │
 │  UPDATE table SET is_synced = true WHERE id = ? and         │
