@@ -351,6 +351,16 @@ This connector inherits the following parameters from **kafka-connect-jdbc**. Fo
 
 Records are published to Kafka topics with the following structure:
 
+
+## ⚠️ Known Limitations
+
+Every design has trade-offs, and here are a few to be aware of:
+
+1. Locking during flag updates: Since the connector updates rows in batches after reading, it can hold locks briefly. This may affect other transactions touching the same rows.
+
+2. Not ideal for high-concurrency or financial systems: In workloads where rows are frequently updated by other transactions, there’s a risk of deadlocks or contention. For strict real-time or financial systems, CDC tools like Debezium or log-based streaming might be safer.
+
+3. Batch size tuning required: Very large batches can slow down the read-back and update phases, while very small batches increase round trips.
 ## Performance Tips
 
 1. **Index tracking columns**: Add indexes to flag columns for faster queries
