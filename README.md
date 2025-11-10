@@ -315,7 +315,7 @@ These are the **new configuration parameters** introduced by this connector:
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `max.retries` | Integer | No | `10` | **Maximum number of retry attempts** if flag update (readback) fails. Prevents infinite retry loops. Range: 0 or higher. Set to `0` to disable retries (fail fast). |
-| `retry.backoff.ms` | Integer | No | `3000` | **Backoff time in milliseconds between retry attempts.** Exponential backoff is applied: delay = `retry.backoff.ms * (2 ^ retry_attempt)`. Range: 0 or higher. Example: With default 3000ms, retries happen at 3s, 6s, 12s, 24s, etc. |
+| `retry.backoff.ms` | Integer | No | `3000` | **Backoff time in milliseconds between retry attempts.** 
 
 ---
 
