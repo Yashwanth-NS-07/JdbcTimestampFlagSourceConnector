@@ -48,6 +48,7 @@ This connector is designed as a **thin extension layer** that works in conjuncti
                             │  Recives all the Acks
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
+│     JdbcTimestampFlagSourceConnector                        │
 │    Batch updates on the table                               │
 │                                                             │
 │  UPDATE table SET is_synced = true WHERE id = ? and         │
@@ -119,7 +120,7 @@ $KAFKA_HOME/
     │       └── ... (other JDBC drivers)
     │
     └── jdbc-timestamp-flag-source/                # Your connector plugin
-        └── jdbc-timestamp-flag-source-connector-1.0.0.jar
+        ├──jdbc-timestamp-flag-source-connector-1.0.0.jar
         ├── kafka-connect-jdbc-10.7.4.jar
         ├── common-config-10.7.4.jar
         ├── common-utils-10.7.4.jar
@@ -248,8 +249,16 @@ connection.password=password
 
 topic.prefix=my-topic
 
-query=select * from my_table
-primary.key.column.names=id (separate by , for combination keys)
+#Connector will append the where conditions
+#Final query looks like this.
+# -> query + where is_processed = 'No' and updated_at < (current_time_in_db - timestampDelay) + query.suffix
+query=select * from schema.my_table
+
+table.name.format=schema.my_table
+
+# separate by , for combination keys
+primary.key.column.names=id
+
 timestamp.column.name=updated_at
 flag.column.name=is_processed
 flag.initial.status=No
@@ -257,6 +266,7 @@ flag.readback.status=Yes
 
 poll.interval.ms=5000
 batch.max.rows=100
+db.timezone=Asia/Kolkata
 
 ```
 ### Configuration Parameters
@@ -349,7 +359,6 @@ This connector inherits the following parameters from **kafka-connect-jdbc**. Fo
 📚 **Full documentation:** https://docs.confluent.io/kafka-connectors/jdbc/current/source-connector/source_config_options.html
 
 
-Records are published to Kafka topics with the following structure:
 
 
 ## ⚠️ Known Limitations
