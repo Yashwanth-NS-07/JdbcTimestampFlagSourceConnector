@@ -57,6 +57,7 @@ public class JdbcFlagQuerier {
     private final String topic;
     private final String querySuffix;
     private final int batchMaxRows;
+    private String loggedQuery;
 
     public JdbcFlagQuerier(
             DatabaseDialect dialect,
@@ -110,6 +111,11 @@ public class JdbcFlagQuerier {
 
         addSuffixIfPresent(builder);
         String finalQueryString = builder.toString();
+
+        if(finalQueryString != null && !finalQueryString.equals(loggedQuery)) {
+            log.info("Begin using SQL Query: {}", finalQueryString);
+            loggedQuery = finalQueryString;
+        }
         log.debug("Prepared Sql Query: {}", finalQueryString);
         stmt = dialect.createPreparedStatement(db, finalQueryString);
         return stmt;
