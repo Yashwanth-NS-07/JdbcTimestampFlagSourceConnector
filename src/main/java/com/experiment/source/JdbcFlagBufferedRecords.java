@@ -100,7 +100,7 @@ public class JdbcFlagBufferedRecords {
                     fieldsMetadata,
                     tableDefinition, //for backward compatibility
                     JdbcSinkConfig.InsertMode.UPDATE,
-                    true // for backward compatibility
+                    true // replace null with default from 10.8.2 - for backward compatibility
             );
         }
         records.add(record);

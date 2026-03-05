@@ -23,6 +23,7 @@ import io.confluent.connect.jdbc.util.ColumnId;
 import io.confluent.connect.jdbc.util.TableDefinition;
 import io.confluent.connect.jdbc.util.TableId;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -47,6 +48,7 @@ public class JdbcFlagDbWriter {
     private final TableDefinition tableDefinition;
     private final CachedConnectionProvider cachedConnectionProvider;
     private final ColumnId flagColumnId;
+    private final Schema flagColumnSchema;
     private final String flagReadBackStatus;
 
     public JdbcFlagDbWriter(
@@ -57,6 +59,7 @@ public class JdbcFlagDbWriter {
             Set<String> fields,
             TableDefinition tableDefinition,
             ColumnId flagColumnId,
+            SchemaMapping schemaMapping,
             String flagReadBackStatus
     ) {
         this.dialect = dialect;
@@ -65,6 +68,7 @@ public class JdbcFlagDbWriter {
         this.allFields = fields;
         this.tableDefinition = tableDefinition;
         this.flagColumnId = flagColumnId;
+        this.flagColumnSchema = schemaMapping.schema().field(flagColumnId.name()).schema();
         this.flagReadBackStatus = flagReadBackStatus;
         this.cachedConnectionProvider = connectionProvider(
                 config.getInt(JdbcSourceConnectorConfig.CONNECTION_ATTEMPTS_CONFIG),
@@ -90,7 +94,7 @@ public class JdbcFlagDbWriter {
                 Struct value = (Struct)sourceRecord.value();
                 value.put(
                         flagColumnId.name(),
-                        StringToSqlType.convert(flagReadBackStatus, tableDefinition.definitionForColumn(flagColumnId.name()).type())
+                        StringToSqlType.convert(flagReadBackStatus, flagColumnSchema)
                 );
                 SinkRecord sinkRecord = new SinkRecord(
                         metadata.topic(),

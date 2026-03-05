@@ -482,6 +482,7 @@ public class JdbcFlagSourceTask extends SourceTask {
                 readBackFields,
                 tableDefinition,
                 flagColumnId,
+                schemaMapping,
                 config.getString(JdbcFlagSourceConnectorConfig.FLAG_COLUMN_READBACK_STATUS_CONFIG));
         log.info("Jdbc Flag readback writer initialized");
     }

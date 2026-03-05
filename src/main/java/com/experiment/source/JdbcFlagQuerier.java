@@ -18,6 +18,7 @@ package com.experiment.source;
 import com.experiment.util.StringToSqlType;
 import io.confluent.connect.jdbc.dialect.DatabaseDialect;
 import io.confluent.connect.jdbc.util.*;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -48,6 +49,7 @@ public class JdbcFlagQuerier {
     private final String flagColumn;
     private final String flagInitialStatus;
     private final ColumnId flagColumnId;
+    private final Schema flagColumnSchema;
     private final long timestampDelay;
     private final ColumnId timeStampColumnId;
     private final TimeZone timeZone;
@@ -89,6 +91,7 @@ public class JdbcFlagQuerier {
         this.topic = topic;
         this.querySuffix = querySuffix;
         this.batchMaxRows = batchMaxRows;
+        this.flagColumnSchema = schemaMapping.schema().field(flagColumnId.name()).schema();
     }
 
     public PreparedStatement getOrCreateStatement(Connection db) throws SQLException {
@@ -129,8 +132,8 @@ public class JdbcFlagQuerier {
         // binding flag column initial value
         dialect.bindField(stmt,
                 1,
-                schemaMapping.schema().field(flagColumnId.name()).schema(),
-                StringToSqlType.convert(flagInitialStatus, tableDefinition.definitionForColumn(flagColumnId.name()).type()),
+                flagColumnSchema,
+                StringToSqlType.convert(flagInitialStatus, flagColumnSchema),
                 tableDefinition.definitionForColumn(flagColumnId.name()));
 
         // binding timestamp column value

@@ -15,60 +15,43 @@
  */
 package com.experiment.util;
 
+import org.apache.kafka.connect.data.Schema;
+
 import java.math.BigDecimal;
-import java.sql.Types;
 
 public class StringToSqlType {
-    public static Object convert(String value, int sqlType) {
+    public static Object convert(String rawValue, Schema schema) {
+        final String value = rawValue.trim();
+        // if logical data type
+        if(schema.name() != null && schema.name().equals("org.apache.kafka.connect.data.Decimal")) {
+            return new BigDecimal(value);
+        }
+        // if primitive data type
         try {
-            switch (sqlType) {
-                // INTEGER, SMALLINT, TINYINT
-                case Types.INTEGER:
-                    return Integer.parseInt(value.trim());
-                case Types.SMALLINT:
-                    return Short.parseShort(value.trim());
-                case Types.TINYINT:
-                    return Byte.parseByte(value.trim());
-
-                // BIGINT
-                case Types.BIGINT:
-                    return Long.parseLong(value.trim());
-
-                // DECIMAL, NUMERIC
-                case Types.DECIMAL:
-                case Types.NUMERIC:
-                    return new BigDecimal(value.trim());
-
-                // FLOAT, REAL
-                case Types.FLOAT:
-                case Types.REAL:
-                    return Float.parseFloat(value.trim());
-
-                // DOUBLE
-                case Types.DOUBLE:
-                    return Double.parseDouble(value.trim());
-
-                // BOOLEAN, BIT
-                case Types.BOOLEAN:
-                case Types.BIT:
-                    return Boolean.parseBoolean(value.trim());
-
-                // CHAR, VARCHAR, LONGVARCHAR, NCHAR, NVARCHAR, LONGNVARCHAR
-                case Types.CHAR:
-                case Types.VARCHAR:
-                case Types.LONGVARCHAR:
-                case Types.NCHAR:
-                case Types.NVARCHAR:
-                case Types.LONGNVARCHAR:
-                    return value.trim(); // Already a string
-
+            switch (schema.type()) {
+                case INT8:
+                    return Byte.parseByte(value);
+                case INT16:
+                    return Short.parseShort(value);
+                case INT32:
+                    return Integer.parseInt(value);
+                case INT64:
+                    return Long.parseLong(value);
+                case FLOAT32:
+                    return Float.parseFloat(value);
+                case FLOAT64:
+                    return Double.parseDouble(value);
+                case BOOLEAN:
+                    return Boolean.parseBoolean(value);
+                case STRING:
+                    return value;
                 default:
-                    throw new IllegalArgumentException("Unsupported SQL data type for Flag Column: " + sqlType);
+                    throw new IllegalArgumentException("Unsupported data type for Flag Column, schema type: " + schema.type());
             }
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid number format for " + sqlType + ": " + value, e);
+            throw new IllegalArgumentException("Invalid number format for " + schema.type() + ": " + value, e);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Conversion error for " + sqlType + ": " + value, e);
+            throw new IllegalArgumentException("Conversion error for " + schema.type() + ": " + value, e);
         }
     }
 }

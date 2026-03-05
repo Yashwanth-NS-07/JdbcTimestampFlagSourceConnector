@@ -66,6 +66,10 @@ public class JdbcTimestampFlagSourceConnector extends SourceConnector {
         if(config.getString(JdbcSourceConnectorConfig.QUERY_CONFIG).isEmpty()) {
             throw new ConnectException("Invalid Configuration: query config is empty");
         }
+        if(config.getString(JdbcSourceConnectorConfig.TOPIC_PREFIX_CONFIG).isEmpty()) {
+            throw new ConnectException("Invalid Configuration: " +
+                    JdbcSourceConnectorConfig.TOPIC_PREFIX_CONFIG + " config is empty");
+        }
         if(config.getString(JdbcFlagSourceConnectorConfig.TABLE_NAME_FORMAT_CONFIG).isEmpty()) {
             throw new ConnectException("Invalid Configuration: "
             + JdbcFlagSourceConnectorConfig.TABLE_NAME_FORMAT_CONFIG + " config is empty");
